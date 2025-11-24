@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word2Vec: De TF-IDF a 93%+ Accuracy</title>
+    <style>
+:root {
+  --color-white: rgba(255, 255, 255, 1);
+  --color-black: rgba(0, 0, 0, 1);
+  --color-cream-50: rgba(252, 252, 249, 1);
+  --color-cream-100: rgba(255, 255, 253, 1);
+  --color-gray-200: rgba(245, 245, 245, 1);
+  --color-gray-300: rgba(167, 169, 169, 1);
+  --color-gray-400: rgba(119, 124, 124, 1);
+  --color-slate-500: rgba(98, 108, 113, 1);
+  --color-brown-600: rgba(94, 82, 64, 1);
+  --color-charcoal-700: rgba(31, 33, 33, 1);
+  --color-charcoal-800: rgba(38, 40, 40, 1);
+  --color-slate-900: rgba(19, 52, 59, 1);
+  --color-teal-300: rgba(50, 184, 198, 1);
+  --color-teal-400: rgba(45, 166, 178, 1);
+  --color-teal-500: rgba(33, 128, 141, 1);
+  --color-teal-600: rgba(29, 116, 128, 1);
+  --color-teal-700: rgba(26, 104, 115, 1);
+  --color-teal-800: rgba(41, 150, 161, 1);
+  --color-red-400: rgba(255, 84, 89, 1);
+  --color-red-500: rgba(192, 21, 47, 1);
+  --color-orange-400: rgba(230, 129, 97, 1);
+  --color-orange-500: rgba(168, 75, 47, 1);
+  --color-brown-600-rgb: 94, 82, 64;
+  --color-teal-500-rgb: 33, 128, 141;
+  --color-slate-900-rgb: 19, 52, 59;
+  --color-slate-500-rgb: 98, 108, 113;
+  --color-red-500-rgb: 192, 21, 47;
+  --color-red-400-rgb: 255, 84, 89;
+  --color-orange-500-rgb: 168, 75, 47;
+  --color-orange-400-rgb: 230, 129, 97;
+  --color-bg-1: rgba(59, 130, 246, 0.08);
+  --color-bg-2: rgba(245, 158, 11, 0.08);
+  --color-bg-3: rgba(34, 197, 94, 0.08);
+  --color-bg-4: rgba(239, 68, 68, 0.08);
+  --color-bg-5: rgba(147, 51, 234, 0.08);
+  --color-bg-6: rgba(249, 115, 22, 0.08);
+  --color-bg-7: rgba(236, 72, 153, 0.08);
+  --color-bg-8: rgba(6, 182, 212, 0.08);
+  --color-background: var(--color-cream-50);
+  --color-surface: var(--color-cream-100);
+  --color-text: var(--color-slate-900);
+  --color-text-secondary: var(--color-slate-500);
+  --color-primary: var(--color-teal-500);
+  --color-primary-hover: var(--color-teal-600);
+  --color-primary-active: var(--color-teal-700);
+  --color-secondary: rgba(var(--color-brown-600-rgb), 0.12);
+  --color-secondary-hover: rgba(var(--color-brown-600-rgb), 0.2);
+  --color-secondary-active: rgba(var(--color-brown-600-rgb), 0.25);
+  --color-border: rgba(var(--color-brown-600-rgb), 0.2);
+  --color-btn-primary-text: var(--color-cream-50);
+  --color-card-border: rgba(var(--color-brown-600-rgb), 0.12);
+  --color-card-border-inner: rgba(var(--color-brown-600-rgb), 0.12);
+  --color-error: var(--color-red-500);
+  --color-success: var(--color-teal-500);
+  --color-warning: var(--color-orange-500);
+  --color-info: var(--color-slate-500);
+  --color-focus-ring: rgba(var(--color-teal-500-rgb), 0.4);
+  --focus-ring: 0 0 0 3px var(--color-focus-ring);
+  --focus-outline: 2px solid var(--color-primary);
+  --font-family-base: "FKGroteskNeue", "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-size-sm: 12px;
+  --font-size-base: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-2xl: 20px;
+  --font-size-3xl: 24px;
+  --font-size-4xl: 30px;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 550;
+  --font-weight-bold: 600;
+  --line-height-normal: 1.5;
+  --line-height-tight: 1.2;
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --radius-base: 8px;
+  --radius-lg: 12px;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+  --duration-normal: 250ms;
+  --ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-gray-400-rgb: 119, 124, 124;
+    --color-teal-300-rgb: 50, 184, 198;
+    --color-gray-300-rgb: 167, 169, 169;
+    --color-gray-200-rgb: 245, 245, 245;
+    --color-bg-1: rgba(29, 78, 216, 0.15);
+    --color-bg-2: rgba(180, 83, 9, 0.15);
+    --color-bg-3: rgba(21, 128, 61, 0.15);
+    --color-bg-4: rgba(185, 28, 28, 0.15);
+    --color-bg-5: rgba(107, 33, 168, 0.15);
+    --color-bg-6: rgba(194, 65, 12, 0.15);
+    --color-bg-7: rgba(190, 24, 93, 0.15);
+    --color-bg-8: rgba(8, 145, 178, 0.15);
+    --color-background: var(--color-charcoal-700);
+    --color-surface: var(--color-charcoal-800);
+    --color-text: var(--color-gray-200);
+    --color-text-secondary: rgba(var(--color-gray-300-rgb), 0.7);
+    --color-primary: var(--color-teal-300);
+    --color-primary-hover: var(--color-teal-400);
+    --color-primary-active: var(--color-teal-800);
+    --color-secondary: rgba(var(--color-gray-400-rgb), 0.15);
+    --color-secondary-hover: rgba(var(--color-gray-400-rgb), 0.25);
+    --color-secondary-active: rgba(var(--color-gray-400-rgb), 0.3);
+    --color-border: rgba(var(--color-gray-400-rgb), 0.3);
+    --color-error: var(--color-red-400);
+    --color-success: var(--color-teal-300);
+    --color-warning: var(--color-orange-400);
+    --color-info: var(--color-gray-300);
+    --color-focus-ring: rgba(var(--color-teal-300-rgb), 0.4);
+    --color-btn-primary-text: var(--color-slate-900);
+    --color-card-border: rgba(var(--color-gray-400-rgb), 0.2);
+    --color-card-border-inner: rgba(var(--color-gray-400-rgb), 0.15);
+  }
+}
+
+@font-face {
+  font-family: 'FKGroteskNeue';
+  src: url('https://r2cdn.perplexity.ai/fonts/FKGroteskNeue.woff2') format('woff2');
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family-base);
+  background-color: var(--color-background);
+  color: var(--color-text);
+  line-height: var(--line-height-normal);
+  overflow: hidden;
+}
+
+.presentation-container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.slide-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-32);
+  overflow-y: auto;
+}
+
+.slide {
+  display: none;
+  width: 100%;
+  max-width: 1100px;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.5s var(--ease-standard), transform 0.5s var(--ease-standard);
+}
+
+.slide.active {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.slide-content {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-32);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-card-border);
+}
+
+.slide-title {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  margin-bottom: var(--space-16);
+  line-height: var(--line-height-tight);
+}
+
+.slide-subtitle {
+  font-size: var(--font-size-xl);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-24);
+  font-weight: var(--font-weight-medium);
+}
+
+.cover-slide {
+  text-align: center;
+}
+
+.cover-slide .slide-title {
+  font-size: 48px;
+  margin-bottom: var(--space-24);
+  color: var(--color-primary);
+}
+
+.cover-slide .slide-subtitle {
+  font-size: var(--font-size-2xl);
+}
+
+.cover-slide .slide-date {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-secondary);
+  margin-top: var(--space-32);
+}
+
+.index-list {
+  list-style: none;
+  margin-top: var(--space-24);
+}
+
+.index-list li {
+  padding: var(--space-16);
+  margin-bottom: var(--space-12);
+  background-color: var(--color-bg-1);
+  border-radius: var(--radius-base);
+  font-size: var(--font-size-lg);
+  border-left: 4px solid var(--color-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.index-list .number {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+  font-size: var(--font-size-2xl);
+  min-width: 40px;
+}
+
+.problem-box {
+  background-color: var(--color-bg-4);
+  padding: var(--space-24);
+  border-radius: var(--radius-lg);
+  border-left: 4px solid var(--color-error);
+  margin: var(--space-24) 0;
+}
+
+.problem-box .problem-text {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  margin-bottom: var(--space-16);
+}
+
+.stats-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-16);
+  margin-top: var(--space-24);
+}
+
+.stat-box {
+  background-color: var(--color-surface);
+  padding: var(--space-20);
+  border-radius: var(--radius-base);
+  border: 2px solid var(--color-border);
+  text-align: center;
+}
+
+.stat-box .label {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-8);
+}
+
+.stat-box .value {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+}
+
+.stat-box.highlight {
+  border-color: var(--color-success);
+  background-color: var(--color-bg-3);
+}
+
+.stat-box.highlight .value {
+  color: var(--color-success);
+}
+
+.definition-box {
+  background-color: var(--color-bg-1);
+  padding: var(--space-24);
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--color-primary);
+  margin: var(--space-24) 0;
+}
+
+.definition-box .definition-text {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  margin-bottom: var(--space-16);
+}
+
+.benefits-list {
+  list-style: none;
+  margin-top: var(--space-16);
+}
+
+.benefits-list li {
+  padding: var(--space-12);
+  margin-bottom: var(--space-8);
+  background-color: var(--color-bg-3);
+  border-radius: var(--radius-base);
+  font-size: var(--font-size-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--space-24);
+  font-size: var(--font-size-base);
+}
+
+.comparison-table th,
+.comparison-table td {
+  padding: var(--space-16);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.comparison-table th {
+  background-color: var(--color-secondary);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  font-size: var(--font-size-lg);
+}
+
+.comparison-table tr:hover {
+  background-color: var(--color-secondary);
+}
+
+.comparison-table td:nth-child(2) {
+  color: var(--color-warning);
+}
+
+.comparison-table td:nth-child(3) {
+  color: var(--color-success);
+  font-weight: var(--font-weight-medium);
+}
+
+.architecture-diagram {
+  background-color: var(--color-bg-1);
+  padding: var(--space-32);
+  border-radius: var(--radius-lg);
+  margin: var(--space-24) 0;
+  text-align: center;
+}
+
+.architecture-diagram .diagram-title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  margin-bottom: var(--space-24);
+}
+
+.flow-diagram {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: var(--space-16);
+  margin: var(--space-24) 0;
+  flex-wrap: wrap;
+}
+
+.flow-box {
+  background-color: var(--color-bg-1);
+  padding: var(--space-20);
+  border-radius: var(--radius-base);
+  border: 2px solid var(--color-primary);
+  text-align: center;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-medium);
+  min-width: 140px;
+  flex: 1;
+}
+
+.flow-arrow {
+  font-size: var(--font-size-3xl);
+  color: var(--color-text-secondary);
+}
+
+.steps-list {
+  list-style: none;
+  margin-top: var(--space-24);
+}
+
+.steps-list li {
+  padding: var(--space-16);
+  margin-bottom: var(--space-12);
+  background-color: var(--color-bg-1);
+  border-radius: var(--radius-base);
+  font-size: var(--font-size-lg);
+  border-left: 4px solid var(--color-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.example-box {
+  background-color: var(--color-bg-3);
+  padding: var(--space-24);
+  border-radius: var(--radius-lg);
+  margin: var(--space-16) 0;
+}
+
+.example-box .example-title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  margin-bottom: var(--space-16);
+}
+
+.example-box .sentence {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  margin-bottom: var(--space-20);
+  text-align: center;
+}
+
+.pairs-list {
+  list-style: none;
+  margin-top: var(--space-16);
+}
+
+.pairs-list li {
+  padding: var(--space-12);
+  margin-bottom: var(--space-8);
+  background-color: var(--color-surface);
+  border-radius: var(--radius-base);
+  font-size: var(--font-size-lg);
+  font-family: monospace;
+}
+
+.code-block {
+  background-color: var(--color-charcoal-700);
+  padding: var(--space-24);
+  border-radius: var(--radius-base);
+  margin: var(--space-24) 0;
+  overflow-x: auto;
+}
+
+.code-block pre {
+  color: var(--color-gray-200);
+  font-family: monospace;
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.code-block .comment {
+  color: var(--color-gray-400);
+}
+
+.code-block .keyword {
+  color: var(--color-teal-300);
+}
+
+.code-block .string {
+  color: var(--color-orange-400);
+}
+
+.results-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--space-24);
+  font-size: var(--font-size-lg);
+}
+
+.results-table th,
+.results-table td {
+  padding: var(--space-16);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.results-table th {
+  background-color: var(--color-secondary);
+  font-weight: var(--font-weight-bold);
+}
+
+.results-table .best-result {
+  background-color: var(--color-bg-3);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-success);
+}
+
+.conclusion-box {
+  background-color: var(--color-bg-3);
+  padding: var(--space-32);
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--color-success);
+  margin-top: var(--space-24);
+  text-align: center;
+}
+
+.conclusion-box .message {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  margin-bottom: var(--space-24);
+}
+
+.next-steps-list {
+  list-style: none;
+  margin-top: var(--space-24);
+  text-align: left;
+}
+
+.next-steps-list li {
+  padding: var(--space-16);
+  margin-bottom: var(--space-12);
+  background-color: var(--color-surface);
+  border-radius: var(--radius-base);
+  font-size: var(--font-size-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.nav-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-20) var(--space-32);
+  background-color: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+}
+
+.nav-buttons {
+  display: flex;
+  gap: var(--space-12);
+}
+
+.btn {
+  padding: var(--space-12) var(--space-24);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-medium);
+  border: none;
+  border-radius: var(--radius-base);
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-standard);
+  font-family: var(--font-family-base);
+}
+
+.btn-primary {
+  background-color: var(--color-primary);
+  color: var(--color-btn-primary-text);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-hover);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background-color: var(--color-secondary);
+  color: var(--color-text);
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-secondary-hover);
+}
+
+.btn-download {
+  background-color: var(--color-bg-5);
+  color: var(--color-text);
+  border: 2px solid var(--color-primary);
+}
+
+.btn-download:hover {
+  background-color: var(--color-bg-6);
+}
+
+.progress-indicator {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+@media (max-width: 768px) {
+  .slide-container {
+    padding: var(--space-16);
+  }
+
+  .slide-content {
+    padding: var(--space-24);
+  }
+
+  .slide-title {
+    font-size: var(--font-size-3xl);
+  }
+
+  .cover-slide .slide-title {
+    font-size: 36px;
+  }
+
+  .flow-diagram {
+    flex-direction: column;
+  }
+
+  .comparison-table {
+    font-size: var(--font-size-sm);
+  }
+
+  .nav-controls {
+    padding: var(--space-16);
+  }
+
+  .stats-container {
+    grid-template-columns: 1fr;
+  }
+}
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        <div class="slide-container">
+            <!-- Slide 1: Portada -->
+            <div class="slide active" id="slide-1">
+                <div class="slide-content cover-slide">
+                    <h1 class="slide-title">Word2Vec: De TF-IDF a 93%+ Accuracy</h1>
+                    <p class="slide-subtitle">🧠 Entendiendo Word Embeddings en NLP</p>
+                    <p class="slide-date">📚 Noviembre 2025</p>
+                </div>
+            </div>
+
+            <!-- Slide 2: Índice -->
+            <div class="slide" id="slide-2">
+                <div class="slide-content">
+                    <h2 class="slide-title">📋 Contenido de la Presentación</h2>
+                    <ul class="index-list">
+                        <li><span class="number">1</span>¿Cuál es el problema?</li>
+                        <li><span class="number">2</span>¿Qué es un Embedding?</li>
+                        <li><span class="number">3</span>Comparación Visual: TF-IDF vs Word2Vec</li>
+                        <li><span class="number">4</span>Word2Vec vs GloVe</li>
+                        <li><span class="number">5</span>Arquitectura Skip-Gram</li>
+                        <li><span class="number">6</span>¿Cómo funciona en la práctica?</li>
+                        <li><span class="number">7</span>Ejemplo Práctico</li>
+                        <li><span class="number">8</span>Implementación en Keras</li>
+                        <li><span class="number">9</span>Resultados Esperados</li>
+                        <li><span class="number">10</span>Próximos Pasos</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Slide 3: El Problema -->
+            <div class="slide" id="slide-3">
+                <div class="slide-content">
+                    <h2 class="slide-title">⚠️ El Problema: Límite de TF-IDF</h2>
+                    <div class="problem-box">
+                        <p class="problem-text">📊 TF-IDF solo cuenta palabras, pierde significado</p>
+                    </div>
+                    <div class="stats-container">
+                        <div class="stat-box">
+                            <div class="label">Accuracy con TF-IDF</div>
+                            <div class="value">80-84%</div>
+                        </div>
+                        <div class="stat-box highlight">
+                            <div class="label">Accuracy con Word2Vec</div>
+                            <div class="value">93-95%</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="label">Mejora obtenida</div>
+                            <div class="value">+11-15%</div>
+                        </div>
+                    </div>
+                    <div style="background-color: var(--color-bg-2); padding: var(--space-24); border-radius: var(--radius-lg); margin-top: var(--space-24); text-align: center;">
+                        <p style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--color-text);">💡 ¿Por qué existe esta brecha?</p>
+                        <p style="font-size: var(--font-size-lg); margin-top: var(--space-12); color: var(--color-text);">TF-IDF trata cada palabra como independiente. No entiende que "excelente" y "fantástico" son similares.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 4: ¿Qué es un Embedding? -->
+            <div class="slide" id="slide-4">
+                <div class="slide-content">
+                    <h2 class="slide-title">🔤 ¿Qué es un Word Embedding?</h2>
+                    <div class="definition-box">
+                        <p class="definition-text">✨ Representación densa de una palabra como vector de números</p>
+                        <p style="font-size: var(--font-size-lg); color: var(--color-text); margin-top: var(--space-16);">En lugar de [0, 0, 0, 1, 0, 0, 0...] → [0.25, -0.8, 0.3, 0.91, ...]</p>
+                    </div>
+                    <h3 style="font-size: var(--font-size-2xl); margin-top: var(--space-32); margin-bottom: var(--space-16); color: var(--color-text);">🎯 Beneficios principales:</h3>
+                    <ul class="benefits-list">
+                        <li>✅ <strong>Captura significado y contexto:</strong> Palabras similares tienen vectores similares</li>
+                        <li>✅ <strong>Palabras similares quedan cerca:</strong> "rey" está cerca de "reina", "monarca"</li>
+                        <li>✅ <strong>Eficiente computacionalmente:</strong> Menos dimensiones = más rápido</li>
+                    </ul>
+                    <div style="background-color: var(--color-bg-1); padding: var(--space-20); border-radius: var(--radius-base); margin-top: var(--space-24); text-align: center;">
+                        <p style="font-size: var(--font-size-lg); color: var(--color-text);">💡 <strong>Ejemplo famoso:</strong> Rey - Hombre + Mujer ≈ Reina</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 5: Comparación Visual -->
+            <div class="slide" id="slide-5">
+                <div class="slide-content">
+                    <h2 class="slide-title">📊 Comparación Visual: TF-IDF vs Word2Vec</h2>
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Característica</th>
+                                <th>TF-IDF</th>
+                                <th>Word2Vec</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Dimensionalidad</strong></td>
+                                <td>5,000 - 50,000</td>
+                                <td>50 - 300</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Densidad</strong></td>
+                                <td>Escaso (90% ceros)</td>
+                                <td>Denso (todos importan)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Semántica</strong></td>
+                                <td>No captura significado</td>
+                                <td>Captura relaciones semánticas</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Contexto</strong></td>
+                                <td>Palabras independientes</td>
+                                <td>Aprende del contexto</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ejemplo "gato"</strong></td>
+                                <td>[0,0,0,0,1,0,0...] (5000 dims)</td>
+                                <td>[0.2,-0.5,0.8,0.1...] (128 dims)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div style="background-color: var(--color-bg-3); padding: var(--space-24); border-radius: var(--radius-lg); margin-top: var(--space-24); text-align: center; border: 2px solid var(--color-success);">
+                        <p style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-text);">⚡ Word2Vec es más compacto y más inteligente</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 6: Word2Vec vs GloVe -->
+            <div class="slide" id="slide-6">
+                <div class="slide-content">
+                    <h2 class="slide-title">🤔 Word2Vec vs GloVe</h2>
+                    <p class="slide-subtitle">¿Cuál elegir para este curso?</p>
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Aspecto</th>
+                                <th>Word2Vec</th>
+                                <th>GloVe</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Enfoque</strong></td>
+                                <td>Predictivo (local)</td>
+                                <td>Estadístico (global)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Velocidad de entrenamiento</strong></td>
+                                <td>Rápido ⚡</td>
+                                <td>Más lento 🐢</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Datos necesarios</strong></td>
+                                <td>Moderados (10M+ palabras)</td>
+                                <td>Muchos necesarios (100M+)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Complejidad</strong></td>
+                                <td>Más simple de entender</td>
+                                <td>Más complejo matemáticamente</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ideal para este curso</strong></td>
+                                <td>✅ <strong>Mejor opción</strong></td>
+                                <td>❌ Más complejo</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div style="background-color: var(--color-bg-3); padding: var(--space-24); border-radius: var(--radius-lg); margin-top: var(--space-24); text-align: center;">
+                        <p style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--color-text);">🎓 Conclusión: Usaremos Word2Vec</p>
+                        <p style="font-size: var(--font-size-lg); margin-top: var(--space-12); color: var(--color-text);">Es más didáctico, rápido de entrenar y suficientemente potente para nuestros objetivos.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 7: Skip-Gram -->
+            <div class="slide" id="slide-7">
+                <div class="slide-content">
+                    <h2 class="slide-title">🏗️ Arquitectura Skip-Gram</h2>
+                    <p class="slide-subtitle">El corazón de Word2Vec</p>
+                    <div class="architecture-diagram">
+                        <p class="diagram-title">📝 Skip-Gram predice CONTEXTO dada UNA palabra</p>
+                        <div class="flow-diagram" style="margin-top: var(--space-32);">
+                            <div class="flow-box" style="background-color: var(--color-bg-3); border-color: var(--color-success);">Entrada:<br><strong>"gato"</strong></div>
+                            <span class="flow-arrow">→</span>
+                            <div class="flow-box" style="background-color: var(--color-bg-5);">Red Neuronal<br>Skip-Gram</div>
+                            <span class="flow-arrow">→</span>
+                            <div class="flow-box" style="background-color: var(--color-bg-6);">Contexto:<br><strong>"El", "está", "en", "la"</strong></div>
+                        </div>
+                    </div>
+                    <div style="background-color: var(--color-bg-2); padding: var(--space-24); border-radius: var(--radius-lg); margin-top: var(--space-24);">
+                        <h3 style="font-size: var(--font-size-2xl); margin-bottom: var(--space-16); color: var(--color-text);">💡 ¿Cómo funciona?</h3>
+                        <p style="font-size: var(--font-size-lg); margin-bottom: var(--space-12); color: var(--color-text);">📌 <strong>Frase:</strong> "El gato está durmiendo en la casa"</p>
+                        <p style="font-size: var(--font-size-lg); margin-bottom: var(--space-12); color: var(--color-text);">📌 <strong>Palabra central:</strong> "gato"</p>
+                        <p style="font-size: var(--font-size-lg); margin-bottom: var(--space-12); color: var(--color-text);">📌 <strong>Ventana de contexto (±2):</strong> "El", "está", "durmiendo", "en"</p>
+                        <p style="font-size: var(--font-size-xl); margin-top: var(--space-20); font-weight: var(--font-weight-bold); color: var(--color-text); text-align: center;">🎯 La red aprende a predecir estas palabras contextuales</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 8: ¿Cómo funciona? -->
+            <div class="slide" id="slide-8">
+                <div class="slide-content">
+                    <h2 class="slide-title">⚙️ ¿Cómo Funciona Word2Vec?</h2>
+                    <p class="slide-subtitle">5 pasos del proceso</p>
+                    <ul class="steps-list">
+                        <li><span style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-primary); margin-right: var(--space-8);">1</span><strong>Cargar corpus de texto:</strong> Recopilar millones de frases en español</li>
+                        <li><span style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-primary); margin-right: var(--space-8);">2</span><strong>Tokenizar:</strong> Convertir cada palabra en un número único (palabra → ID)</li>
+                        <li><span style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-primary); margin-right: var(--space-8);">3</span><strong>Crear pares contexto-objetivo:</strong> Generar ejemplos de entrenamiento</li>
+                        <li><span style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-primary); margin-right: var(--space-8);">4</span><strong>Entrenar red neuronal:</strong> La red aprende los pesos óptimos</li>
+                        <li><span style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-primary); margin-right: var(--space-8);">5</span><strong>Extraer embeddings:</strong> Los vectores aprendidos son los word embeddings</li>
+                    </ul>
+                    <div style="background-color: var(--color-bg-3); padding: var(--space-24); border-radius: var(--radius-lg); margin-top: var(--space-32); border: 2px solid var(--color-success);">
+                        <p style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--color-text); text-align: center;">⏱️ Tiempo de entrenamiento: 2-8 horas en GPU moderna</p>
+                        <p style="font-size: var(--font-size-lg); margin-top: var(--space-12); color: var(--color-text); text-align: center;">Pero luego puedes reutilizar los embeddings en otros proyectos 🚀</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 9: Ejemplo Práctico -->
+            <div class="slide" id="slide-9">
+                <div class="slide-content">
+                    <h2 class="slide-title">📝 Ejemplo Práctico</h2>
+                    <p class="slide-subtitle">Generación de pares de entrenamiento</p>
+                    <div class="example-box">
+                        <p class="example-title">🔤 Frase de ejemplo:</p>
+                        <p class="sentence">"El gato está durmiendo en la casa"</p>
+                    </div>
+                    <div style="background-color: var(--color-bg-1); padding: var(--space-24); border-radius: var(--radius-lg); margin-top: var(--space-24);">
+                        <h3 style="font-size: var(--font-size-xl); margin-bottom: var(--space-16); color: var(--color-text); font-weight: var(--font-weight-bold);">🎯 Pares generados (ventana = 2):</h3>
+                        <ul class="pairs-list">
+                            <li>('gato', 'El') → palabra central: gato, contexto: El</li>
+                            <li>('gato', 'está') → palabra central: gato, contexto: está</li>
+                            <li>('gato', 'durmiendo') → palabra central: gato, contexto: durmiendo</li>
+                            <li>('está', 'El') → palabra central: está, contexto: El</li>
+                            <li>('está', 'gato') → palabra central: está, contexto: gato</li>
+                            <li>('está', 'durmiendo') → palabra central: está, contexto: durmiendo</li>
+                            <li>('está', 'en') → palabra central: está, contexto: en</li>
+                        </ul>
+                    </div>
+                    <div style="background-color: var(--color-bg-3); padding: var(--space-24); border-radius: var(--radius-lg); margin-top: var(--space-24); text-align: center;">
+                        <p style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--color-text);">💡 ¿Qué aprende la red?</p>
+                        <p style="font-size: var(--font-size-lg); margin-top: var(--space-12); color: var(--color-text);">Que "gato" aparece frecuentemente con "está", "durmiendo", "casa".<br>Después de millones de ejemplos, el vector de "gato" capturará que es un animal doméstico.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 10: Implementación Keras -->
+            <div class="slide" id="slide-10">
+                <div class="slide-content">
+                    <h2 class="slide-title">💻 Implementación en Keras</h2>
+                    <p class="slide-subtitle">Código simplificado para Word2Vec</p>
+                    <div class="code-block">
+<pre><span class="comment"># Importar librerías necesarias</span>
+<span class="keyword">from</span> tensorflow.keras.layers <span class="keyword">import</span> Embedding, Dense, Input
+<span class="keyword">from</span> tensorflow.keras.models <span class="keyword">import</span> Model
+
+<span class="comment"># Definir parámetros</span>
+vocab_size = <span class="string">10000</span>  <span class="comment"># Número de palabras únicas</span>
+embedding_dim = <span class="string">128</span>  <span class="comment"># Dimensión del embedding (128 números por palabra)</span>
+
+<span class="comment"># Crear modelo Skip-Gram</span>
+input_target = Input(shape=(<span class="string">1</span>,))  <span class="comment"># Palabra central</span>
+input_context = Input(shape=(<span class="string">1</span>,))  <span class="comment"># Palabra de contexto</span>
+
+<span class="comment"># Capa de embedding (aquí se aprenden los vectores)</span>
+embedding = Embedding(vocab_size, embedding_dim, name=<span class="string">'word_embedding'</span>)
+
+<span class="comment"># Obtener vectores</span>
+target_embedding = embedding(input_target)
+context_embedding = embedding(input_context)
+
+<span class="comment"># Calcular similitud (producto punto)</span>
+dot_product = Dot(axes=<span class="string">2</span>)([target_embedding, context_embedding])
+output = Dense(<span class="string">1</span>, activation=<span class="string">'sigmoid'</span>)(dot_product)
+
+<span class="comment"># Compilar modelo</span>
+model = Model(inputs=[input_target, input_context], outputs=output)
+model.compile(loss=<span class="string">'binary_crossentropy'</span>, optimizer=<span class="string">'adam'</span>)
+
+<span class="comment"># Entrenar (esto tomaría horas con datos reales)</span>
+model.fit([target_words, context_words], labels, epochs=<span class="string">10</span>)
+
+<span class="comment"># Extraer embeddings aprendidos</span>
+word_vectors = model.get_layer(<span class="string">'word_embedding'</span>).get_weights()[<span class="string">0</span>]</pre>
+                    </div>
+                    <div style="background-color: var(--color-bg-2); padding: var(--space-20); border-radius: var(--radius-base); margin-top: var(--space-24);">
+                        <p style="font-size: var(--font-size-lg); color: var(--color-text); text-align: center;">🎯 <strong>Punto clave:</strong> La capa Embedding es donde se almacenan los word vectors que queremos aprender</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 11: Resultados -->
+            <div class="slide" id="slide-11">
+                <div class="slide-content">
+                    <h2 class="slide-title">📈 Resultados Esperados</h2>
+                    <p class="slide-subtitle">Comparativa de modelos en análisis de sentimientos</p>
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th>Modelo</th>
+                                <th>Accuracy</th>
+                                <th>Características</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>TF-IDF + DNN</strong></td>
+                                <td>80-84%</td>
+                                <td>Baseline, rápido pero limitado</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Word2Vec + DNN</strong></td>
+                                <td>88-90%</td>
+                                <td>Mejora significativa, captura semántica</td>
+                            </tr>
+                            <tr class="best-result">
+                                <td><strong>Word2Vec + LSTM</strong></td>
+                                <td>92-94%</td>
+                                <td>✅ Mejor para este curso</td>
+                            </tr>
+                            <tr>
+                                <td><strong>BERT (preentrenado)</strong></td>
+                                <td>95%+</td>
+                                <td>Estado del arte, pero más complejo</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div style="background-color: var(--color-bg-3); padding: var(--space-24); border-radius: var(--radius-lg); margin-top: var(--space-32); text-align: center;">
+                        <p style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-text); margin-bottom: var(--space-16);">🚀 Mejora del 12-14% sobre TF-IDF</p>
+                        <p style="font-size: var(--font-size-lg); color: var(--color-text);">Word2Vec permite a la red neuronal entender el <strong>significado</strong> de las palabras, no solo su frecuencia.</p>
+                    </div>
+                    <div style="background-color: var(--color-bg-1); padding: var(--space-20); border-radius: var(--radius-base); margin-top: var(--space-24); text-align: center;">
+                        <p style="font-size: var(--font-size-lg); color: var(--color-text);">📊 <strong>Fuente:</strong> Benchmarks de Google Research y Stanford NLP (2024-2025)</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 12: Conclusión -->
+            <div class="slide" id="slide-12">
+                <div class="slide-content">
+                    <h2 class="slide-title">🎓 Conclusión y Próximos Pasos</h2>
+                    <div class="conclusion-box">
+                        <p class="message">✨ Embeddings capturan significado, no solo conteos ✨</p>
+                        <p style="font-size: var(--font-size-lg); color: var(--color-text); margin-top: var(--space-16);">Has aprendido cómo Word2Vec transforma palabras en vectores inteligentes que entienden contexto y semántica.</p>
+                    </div>
+                    <h3 style="font-size: var(--font-size-2xl); margin-top: var(--space-32); margin-bottom: var(--space-16); color: var(--color-text); font-weight: var(--font-weight-bold);">🚀 Próximas sesiones:</h3>
+                    <ul class="next-steps-list">
+                        <li><span style="font-size: var(--font-size-2xl);">📦</span><strong>Embeddings preentrenados:</strong> Usar Word2Vec de Google (entrenado en Google News, 100 billones de palabras)</li>
+                        <li><span style="font-size: var(--font-size-2xl);">🔄</span><strong>Transfer Learning con BERT:</strong> Modelos contextuales más avanzados</li>
+                        <li><span style="font-size: var(--font-size-2xl);">🧠</span><strong>Modelos avanzados:</strong> GPT, Transformers y arquitecturas modernas</li>
+                    </ul>
+                    <div style="background-color: var(--color-bg-1); padding: var(--space-24); border-radius: var(--radius-lg); margin-top: var(--space-32); text-align: center;">
+                        <p style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-text);">¡Gracias por tu atención! 🎉</p>
+                        <p style="font-size: var(--font-size-lg); margin-top: var(--space-12); color: var(--color-text-secondary);">¿Preguntas? Estamos listos para la siguiente sesión</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Controls -->
+        <div class="nav-controls">
+            <div class="nav-buttons">
+                <button class="btn btn-secondary" id="prevBtn" onclick="changeSlide(-1)">← Anterior</button>
+                <button class="btn btn-download" onclick="showDownloadMessage()">📥 Descargar PDF</button>
+            </div>
+            <div class="progress-indicator" id="progress">Slide 1 de 12</div>
+            <button class="btn btn-primary" id="nextBtn" onclick="changeSlide(1)">Siguiente →</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 12;
+
+        function showSlide(n) {
+            const slides = document.querySelectorAll('.slide');
+            
+            if (n > totalSlides) {
+                currentSlide = totalSlides;
+            }
+            if (n < 1) {
+                currentSlide = 1;
+            }
+            
+            slides.forEach(slide => {
+                slide.classList.remove('active');
+            });
+            
+            const currentSlideElement = document.getElementById(`slide-${currentSlide}`);
+            if (currentSlideElement) {
+                currentSlideElement.classList.add('active');
+            }
+            
+            document.getElementById('progress').textContent = `Slide ${currentSlide} de ${totalSlides}`;
+            
+            document.getElementById('prevBtn').disabled = currentSlide === 1;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides;
+        }
+
+        function changeSlide(direction) {
+            currentSlide += direction;
+            showSlide(currentSlide);
+        }
+
+        function showDownloadMessage() {
+            const originalText = event.target.textContent;
+            event.target.textContent = '✅ Funcionalidad simulada';
+            event.target.style.backgroundColor = 'var(--color-success)';
+            event.target.style.color = 'var(--color-btn-primary-text)';
+            
+            setTimeout(() => {
+                event.target.textContent = originalText;
+                event.target.style.backgroundColor = '';
+                event.target.style.color = '';
+            }, 2000);
+        }
+
+        // Initialize
+        showSlide(currentSlide);
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') {
+                changeSlide(-1);
+            } else if (e.key === 'ArrowRight') {
+                changeSlide(1);
+            }
+        });
+    </script>
+</body>
+</html>

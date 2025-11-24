@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Naive Bayes para Clasificación de Texto</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .presentation {
+            width: 100%;
+            max-width: 1000px;
+            height: 100vh;
+            background: white;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .slide {
+            display: none;
+            padding: 60px;
+            height: 100%;
+            animation: fadeIn 0.5s ease-in-out;
+            overflow-y: auto;
+        }
+
+        .slide.active {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .slide h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+
+        .slide h2 {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #764ba2;
+            padding-bottom: 15px;
+        }
+
+        .slide h3 {
+            color: #764ba2;
+            font-size: 1.5em;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+
+        .slide p, .slide li {
+            font-size: 1.1em;
+            line-height: 1.8;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .slide ul {
+            margin-left: 30px;
+        }
+
+        .slide li {
+            margin-bottom: 12px;
+        }
+
+        /* Slide 1: Portada */
+        .title-slide {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            justify-content: center;
+        }
+
+        .title-slide h1 {
+            color: white;
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+
+        .title-slide p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.3em;
+            margin-bottom: 10px;
+        }
+
+        /* Fórmula */
+        .formula {
+            background: #f5f7fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1em;
+            color: #333;
+        }
+
+        .formula-title {
+            color: #667eea;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        /* Tabla */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        tr:hover {
+            background: #f9f9f9;
+        }
+
+        /* Cards */
+        .card {
+            background: #f5f7fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .card.highlight {
+            border-left: 4px solid #764ba2;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        }
+
+        .card-title {
+            color: #667eea;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        /* Code */
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+
+        .code-keyword {
+            color: #ff79c6;
+        }
+
+        .code-string {
+            color: #f1fa8c;
+        }
+
+        .code-comment {
+            color: #6272a4;
+        }
+
+        /* Matrix */
+        .matrix {
+            background: white;
+            padding: 20px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .matrix-row {
+            display: flex;
+            justify-content: center;
+            margin: 10px 0;
+        }
+
+        .matrix-cell {
+            width: 100px;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2em;
+            border: 2px solid #667eea;
+            margin: 5px;
+        }
+
+        .matrix-cell.tp {
+            background: #a8e6cf;
+            color: #2d5016;
+        }
+
+        .matrix-cell.tn {
+            background: #a8e6cf;
+            color: #2d5016;
+        }
+
+        .matrix-cell.fp {
+            background: #ffd3b6;
+            color: #8b4513;
+        }
+
+        .matrix-cell.fn {
+            background: #ffd3b6;
+            color: #8b4513;
+        }
+
+        /* Navegación */
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 60px;
+            background: #f5f7fa;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .slide-counter {
+            color: #667eea;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        /* Indicadores de slide */
+        .slide-indicators {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ddd;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .indicator.active {
+            background: #667eea;
+        }
+
+        /* Destacados */
+        .highlight-text {
+            color: #764ba2;
+            font-weight: bold;
+        }
+
+        .emoji {
+            font-size: 1.2em;
+            margin-right: 10px;
+        }
+
+        /* Ejemplo de matriz de confusión con texto */
+        .confusion-matrix {
+            margin: 20px 0;
+            font-family: monospace;
+            background: #f5f7fa;
+            padding: 20px;
+            border-radius: 8px;
+            line-height: 2;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .slide {
+                padding: 30px;
+            }
+
+            .slide h1 {
+                font-size: 1.8em;
+            }
+
+            .slide h2 {
+                font-size: 1.5em;
+            }
+
+            .navigation {
+                padding: 15px 30px;
+                flex-wrap: wrap;
+            }
+
+            button {
+                padding: 10px 20px;
+                font-size: 0.9em;
+            }
+        }
+
+        /* Tabla de Métricas */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .metric-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .metric-formula {
+            font-family: monospace;
+            font-size: 0.95em;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        .metric-description {
+            font-size: 0.95em;
+            margin-top: 10px;
+        }
+
+        /* Pipeline Steps */
+        .pipeline-step {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+            padding: 15px;
+            background: #f5f7fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .step-number {
+            background: #667eea;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 20px;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-title {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .step-description {
+            color: #666;
+            font-size: 0.95em;
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation">
+        <!-- Slide 1: Portada -->
+        <div class="slide title-slide active">
+            <div>
+                <h1>🎓 Clasificación de Texto con Naive Bayes</h1>
+                <p>Teoría, Pipeline y Evaluación de Modelos</p>
+                <hr style="border: none; height: 2px; background: white; margin: 30px 0;">
+                <p style="font-size: 1.1em; margin-top: 40px;">📚 Natural Language Processing (NLP)</p>
+                <p style="font-size: 0.95em; opacity: 0.8;">Octubre 2025</p>
+            </div>
+        </div>
+
+        <!-- Slide 2: ¿Qué es Naive Bayes? -->
+        <div class="slide">
+            <h2>¿Qué es Naive Bayes?</h2>
+            <h3>Un algoritmo probabilístico para clasificación</h3>
+            <ul>
+                <li><span class="emoji">📊</span> Basado en el <span class="highlight-text">Teorema de Bayes</span></li>
+                <li><span class="emoji">🎯</span> Se llama "Naive" (ingenuo) porque asume que todas las palabras son <span class="highlight-text">independientes</span></li>
+                <li><span class="emoji">⚡</span> Muy rápido de entrenar y predecir</li>
+                <li><span class="emoji">📚</span> Funciona bien incluso con pocos datos</li>
+            </ul>
+
+            <h3 style="margin-top: 40px;">La Asunción de Independencia</h3>
+            <div class="card highlight">
+                <div class="card-title">💡 Concepto Clave</div>
+                <p>Naive Bayes asume que cada palabra en un documento es <span class="highlight-text">completamente independiente</span> de las demás. Aunque esto rara vez es verdad en textos reales, el modelo funciona sorprendentemente bien en la práctica.</p>
+            </div>
+        </div>
+
+        <!-- Slide 3: Teorema de Bayes -->
+        <div class="slide">
+            <h2>El Teorema de Bayes</h2>
+            <div class="formula">
+                <div class="formula-title">Fórmula Matemática:</div>
+                P(Clase|Palabras) = P(Palabras|Clase) × P(Clase) / P(Palabras)
+            </div>
+
+            <h3>Explicación de cada término:</h3>
+            <table>
+                <tr>
+                    <th>Término</th>
+                    <th>Significado</th>
+                </tr>
+                <tr>
+                    <td><strong>P(Clase|Palabras)</strong></td>
+                    <td>Probabilidad de la clase dado el texto (lo que queremos calcular)</td>
+                </tr>
+                <tr>
+                    <td><strong>P(Palabras|Clase)</strong></td>
+                    <td>Probabilidad de ver esas palabras en esa clase</td>
+                </tr>
+                <tr>
+                    <td><strong>P(Clase)</strong></td>
+                    <td>Probabilidad a priori de la clase (qué tan frecuente es)</td>
+                </tr>
+                <tr>
+                    <td><strong>P(Palabras)</strong></td>
+                    <td>Probabilidad total de ver esas palabras</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Slide 4: Ejemplo Intuitivo -->
+        <div class="slide">
+            <h2>Ejemplo Intuitivo: Clasificar Reseñas</h2>
+
+            <div class="card">
+                <div class="card-title">Dataset de Ejemplo:</div>
+                <table style="margin-top: 10px;">
+                    <tr>
+                        <th>Reseña</th>
+                        <th>Clase</th>
+                    </tr>
+                    <tr>
+                        <td>"¡Me encanta este producto!"</td>
+                        <td>✅ Positiva</td>
+                    </tr>
+                    <tr>
+                        <td>"Muy malo, no funciona"</td>
+                        <td>❌ Negativa</td>
+                    </tr>
+                    <tr>
+                        <td>"Excelente atención"</td>
+                        <td>✅ Positiva</td>
+                    </tr>
+                </table>
+            </div>
+
+            <h3 style="margin-top: 30px;">¿Cómo predice el modelo?</h3>
+            <ul>
+                <li>Aprende que "encanta" aparece en reseñas Positivas</li>
+                <li>Aprende que "malo" aparece en reseñas Negativas</li>
+                <li>Para una reseña nueva, calcula la probabilidad de cada clase</li>
+                <li>Elige la clase con mayor probabilidad</li>
+            </ul>
+        </div>
+
+        <!-- Slide 5: Pipeline - Visión General -->
+        <div class="slide">
+            <h2>Pipeline de Clasificación con sklearn</h2>
+            <p>Flujo completo desde datos crudos hasta predicciones:</p>
+
+            <div class="pipeline-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <div class="step-title">Preparar Dataset</div>
+                    <div class="step-description">Recopilar y organizar los datos con etiquetas</div>
+                </div>
+            </div>
+
+            <div class="pipeline-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <div class="step-title">Preprocesar Texto</div>
+                    <div class="step-description">Limpiar, minúsculas, eliminar puntuación</div>
+                </div>
+            </div>
+
+            <div class="pipeline-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <div class="step-title">Extracción de Características</div>
+                    <div class="step-description">Convertir texto a vectores numéricos (TF-IDF)</div>
+                </div>
+            </div>
+
+            <div class="pipeline-step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <div class="step-title">División Train/Test</div>
+                    <div class="step-description">70% entrenamiento, 30% prueba</div>
+                </div>
+            </div>
+
+            <div class="pipeline-step">
+                <div class="step-number">5</div>
+                <div class="step-content">
+                    <div class="step-title">Entrenamiento</div>
+                    <div class="step-description">El modelo aprende los patrones</div>
+                </div>
+            </div>
+
+            <div class="pipeline-step">
+                <div class="step-number">6</div>
+                <div class="step-content">
+                    <div class="step-title">Evaluación</div>
+                    <div class="step-description">Medir el rendimiento con métricas</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Código - Setup -->
+        <div class="slide">
+            <h2>Código: Imports y Setup</h2>
+            <div class="code-block">
+<span class="code-keyword">from</span> sklearn.feature_extraction.text <span class="code-keyword">import</span> TfidfVectorizer
+<span class="code-keyword">from</span> sklearn.naive_bayes <span class="code-keyword">import</span> MultinomialNB
+<span class="code-keyword">from</span> sklearn.model_selection <span class="code-keyword">import</span> train_test_split
+<span class="code-keyword">from</span> sklearn.metrics <span class="code-keyword">import</span> accuracy_score, precision_score
+<span class="code-keyword">from</span> sklearn.metrics <span class="code-keyword">import</span> recall_score, f1_score
+
+<span class="code-comment"># Preparar datos</span>
+textos = [<span class="code-string">"me encanta"</span>, <span class="code-string">"muy malo"</span>, ...]
+etiquetas = [1, 0, ...]  <span class="code-comment"># 1=Positivo, 0=Negativo</span>
+
+<span class="code-comment"># Vectorizar</span>
+vectorizador = TfidfVectorizer(max_features=100)
+X = vectorizador.fit_transform(textos)
+
+<span class="code-comment"># Dividir datos</span>
+X_train, X_test, y_train, y_test = train_test_split(
+    X, etiquetas, test_size=0.3, random_state=42
+)
+            </div>
+        </div>
+
+        <!-- Slide 7: Código - Entrenamiento -->
+        <div class="slide">
+            <h2>Código: Entrenamiento del Modelo</h2>
+            <div class="code-block">
+<span class="code-comment"># Crear el modelo</span>
+modelo = MultinomialNB()
+
+<span class="code-comment"># Entrenar</span>
+modelo.fit(X_train, y_train)
+
+<span class="code-comment"># Predecir en conjunto de prueba</span>
+y_predicciones = modelo.predict(X_test)
+
+<span class="code-comment"># Obtener probabilidades</span>
+probabilidades = modelo.predict_proba(X_test)
+<span class="code-comment"># Ejemplo: [[0.2, 0.8], [0.9, 0.1], ...]
+#         Prob Negativo, Prob Positivo para cada muestra</span>
+
+<span class="code-comment"># Predecir en un nuevo texto</span>
+texto_nuevo = <span class="code-string">"excelente producto"</span>
+X_nuevo = vectorizador.transform([texto_nuevo])
+prediccion = modelo.predict(X_nuevo)[0]
+confianza = modelo.predict_proba(X_nuevo)[0]
+            </div>
+        </div>
+
+        <!-- Slide 8: Matriz de Confusión -->
+        <div class="slide">
+            <h2>Matriz de Confusión</h2>
+            <p>La base para calcular todas nuestras métricas de evaluación:</p>
+
+            <div class="confusion-matrix">
+                        PREDICCIÓN<br>
+                Negativo  │  Positivo<br>
+                ──────────┼──────────<br>
+Real Negativo    <span style="color: #2d5016; font-weight: bold;">TN</span>   │    <span style="color: #8b4513; font-weight: bold;">FP</span><br>
+     Positivo    <span style="color: #8b4513; font-weight: bold;">FN</span>   │    <span style="color: #2d5016; font-weight: bold;">TP</span>
+            </div>
+
+            <table>
+                <tr>
+                    <th>Sigla</th>
+                    <th>Significado</th>
+                    <th>Interpretación</th>
+                </tr>
+                <tr>
+                    <td><strong style="color: #2d5016;">TP</strong></td>
+                    <td>Verdadero Positivo</td>
+                    <td>Predijo Positivo y es Positivo ✅</td>
+                </tr>
+                <tr>
+                    <td><strong style="color: #2d5016;">TN</strong></td>
+                    <td>Verdadero Negativo</td>
+                    <td>Predijo Negativo y es Negativo ✅</td>
+                </tr>
+                <tr>
+                    <td><strong style="color: #8b4513;">FP</strong></td>
+                    <td>Falso Positivo</td>
+                    <td>Predijo Positivo pero es Negativo ❌</td>
+                </tr>
+                <tr>
+                    <td><strong style="color: #8b4513;">FN</strong></td>
+                    <td>Falso Negativo</td>
+                    <td>Predijo Negativo pero es Positivo ❌</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Slide 9: Accuracy -->
+        <div class="slide">
+            <h2>Métrica 1: Accuracy (Precisión General)</h2>
+
+            <div class="formula">
+                <div class="formula-title">Fórmula:</div>
+                Accuracy = (TP + TN) / (TP + TN + FP + FN)
+            </div>
+
+            <h3>¿Qué mide?</h3>
+            <p>Porcentaje total de predicciones <span class="highlight-text">correctas</span>, sin importar la clase.</p>
+
+            <div class="card highlight">
+                <div class="card-title">📊 Interpretación:</div>
+                <p>Si Accuracy = 0.85 (85%), significa que el modelo predijo correctamente 85 de cada 100 casos.</p>
+            </div>
+
+            <h3>¿Cuándo usar?</h3>
+            <ul>
+                <li>✅ Cuando las clases están <span class="highlight-text">balanceadas</span> (aproximadamente igual cantidad de cada una)</li>
+                <li>✅ Cuando todos los errores tienen igual importancia</li>
+                <li>❌ <strong>NO</strong> usar si las clases están desbalanceadas</li>
+            </ul>
+
+            <div class="card">
+                <div class="card-title">⚠️ Ejemplo de Problema:</div>
+                <p>Si 95% de emails son legítimos y 5% son spam, un modelo que predice "legítimo" para todo tendría 95% de accuracy, pero sería completamente inútil.</p>
+            </div>
+        </div>
+
+        <!-- Slide 10: Precision y Recall -->
+        <div class="slide">
+            <h2>Métricas 2 y 3: Precision y Recall</h2>
+
+            <div class="metric-card">
+                <div class="metric-name">🎯 Precision</div>
+                <div class="metric-formula">TP / (TP + FP)</div>
+                <div class="metric-description">De las predicciones POSITIVAS, ¿cuántas fueron correctas?</div>
+            </div>
+
+            <div class="card" style="margin-top: 20px;">
+                <div class="card-title">Cuándo usar Precision:</div>
+                <ul>
+                    <li>Cuando los <span class="highlight-text">Falsos Positivos son costosos</span></li>
+                    <li><strong>Ejemplo:</strong> Filtro de spam (es malo marcar email legítimo como spam)</li>
+                    <li><strong>Ejemplo:</strong> Diagnóstico de enfermedad (es malo decir que está enfermo si está sano)</li>
+                </ul>
+            </div>
+
+            <div class="metric-card" style="margin-top: 20px;">
+                <div class="metric-name">🔍 Recall (Sensibilidad)</div>
+                <div class="metric-formula">TP / (TP + FN)</div>
+                <div class="metric-description">De todos los POSITIVOS reales, ¿cuántos identificó?</div>
+            </div>
+
+            <div class="card" style="margin-top: 20px;">
+                <div class="card-title">Cuándo usar Recall:</div>
+                <ul>
+                    <li>Cuando los <span class="highlight-text">Falsos Negativos son costosos</span></li>
+                    <li><strong>Ejemplo:</strong> Detección de fraude (es malo dejar pasar un fraude)</li>
+                    <li><strong>Ejemplo:</strong> Detección de tumor (es malo no detectar un cáncer)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 11: F1-Score -->
+        <div class="slide">
+            <h2>Métrica 4: F1-Score</h2>
+
+            <div class="formula">
+                <div class="formula-title">Fórmula:</div>
+                F1 = 2 × (Precision × Recall) / (Precision + Recall)
+            </div>
+
+            <h3>¿Qué mide?</h3>
+            <p>Es el <span class="highlight-text">promedio armónico</span> entre Precision y Recall. Balance entre ambas métricas.</p>
+
+            <div class="card highlight">
+                <div class="card-title">💡 Ventaja del F1-Score:</div>
+                <ul>
+                    <li>Penaliza más los errores desbalanceados</li>
+                    <li>Si una métrica es baja, el F1 también lo será</li>
+                    <li>Mejor para datasets desbalanceados que Accuracy</li>
+                </ul>
+            </div>
+
+            <h3>¿Cuándo usar F1-Score?</h3>
+            <ul>
+                <li>✅ Cuando necesitas un <span class="highlight-text">balance</span> entre Precision y Recall</li>
+                <li>✅ Cuando las clases están <span class="highlight-text">desbalanceadas</span></li>
+                <li>✅ Cuando ambos tipos de errores son importantes</li>
+            </ul>
+
+            <div class="card">
+                <div class="card-title">Ejemplo: F1-Score vs Accuracy</div>
+                <p><strong>Scenario:</strong> 99% Negativo, 1% Positivo</p>
+                <ul style="margin-top: 10px;">
+                    <li>Modelo que predice siempre "Negativo": Accuracy=99%, F1≈0%</li>
+                    <li>Modelo balanceado: Accuracy=90%, F1=70% (mejor representación)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 12: Comparativa de Métricas -->
+        <div class="slide">
+            <h2>Resumen: Comparativa de Métricas</h2>
+
+            <table style="font-size: 0.95em;">
+                <tr>
+                    <th>Métrica</th>
+                    <th>Fórmula</th>
+                    <th>Mejor para...</th>
+                    <th>Limitación</th>
+                </tr>
+                <tr>
+                    <td><strong>Accuracy</strong></td>
+                    <td>(TP+TN)/Total</td>
+                    <td>Clases balanceadas</td>
+                    <td>Engaña con clases desbalanceadas</td>
+                </tr>
+                <tr>
+                    <td><strong>Precision</strong></td>
+                    <td>TP/(TP+FP)</td>
+                    <td>FP costosos</td>
+                    <td>Ignora Falsos Negativos</td>
+                </tr>
+                <tr>
+                    <td><strong>Recall</strong></td>
+                    <td>TP/(TP+FN)</td>
+                    <td>FN costosos</td>
+                    <td>Ignora Falsos Positivos</td>
+                </tr>
+                <tr>
+                    <td><strong>F1-Score</strong></td>
+                    <td>2×(P×R)/(P+R)</td>
+                    <td>Clases desbalanceadas</td>
+                    <td>Menos interpretable</td>
+                </tr>
+            </table>
+
+            <h3 style="margin-top: 30px;">📌 Recomendación General</h3>
+            <div class="card highlight">
+                <p><strong>Usa todas las métricas juntas:</strong> No confíes en una sola métrica. Observa cómo se comporta el modelo desde diferentes ángulos.</p>
+                <p style="margin-top: 10px;"><strong>Para empezar:</strong> F1-Score es la mejor opción general en la mayoría de los casos reales.</p>
+            </div>
+        </div>
+
+        <!-- Slide 13: Conclusiones -->
+        <div class="slide">
+            <h2>🎓 Conclusiones</h2>
+
+            <h3>Ventajas de Naive Bayes</h3>
+            <ul>
+                <li>⚡ Muy rápido de entrenar y predecir</li>
+                <li>📚 Funciona con pocos datos</li>
+                <li>🎯 Interpretable: podemos ver qué palabras importan</li>
+                <li>💻 Simple de implementar</li>
+            </ul>
+
+            <h3 style="margin-top: 25px;">Limitaciones de Naive Bayes</h3>
+            <ul>
+                <li>⚠️ Asume independencia de palabras (no siempre verdad)</li>
+                <li>🔄 No captura orden de palabras</li>
+                <li>📊 Muy dependiente de la calidad del dataset</li>
+            </ul>
+
+            <h3 style="margin-top: 25px;">Próximos Pasos</h3>
+            <ul>
+                <li>🔗 Explorar otros clasificadores: Regresión Logística, SVM</li>
+                <li>📈 Trabajar con datasets más grandes y complejos</li>
+                <li>🎓 Aprender técnicas de ajuste de hiperparámetros</li>
+                <li>🧠 Introducción a Redes Neuronales</li>
+            </ul>
+
+            <div class="card" style="margin-top: 25px;">
+                <div class="card-title">¡Gracias!</div>
+                <p style="color: #667eea; font-weight: bold;">Ahora estás listo para entrenar tus propios clasificadores de texto.</p>
+            </div>
+        </div>
+
+        <!-- Navegación -->
+        <div class="navigation">
+            <button id="prev-btn" onclick="cambiarSlide(-1)">← Anterior</button>
+            <div class="slide-counter">
+                <span id="slide-actual">1</span> / <span id="slide-total">13</span>
+            </div>
+            <button id="next-btn" onclick="cambiarSlide(1)">Siguiente →</button>
+        </div>
+    </div>
+
+    <script>
+        let slideActual = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        function mostrarSlide(n) {
+            slides.forEach(slide => slide.classList.remove('active'));
+            slides[slideActual].classList.add('active');
+
+            document.getElementById('slide-actual').textContent = slideActual + 1;
+            document.getElementById('prev-btn').disabled = slideActual === 0;
+            document.getElementById('next-btn').disabled = slideActual === totalSlides - 1;
+        }
+
+        function cambiarSlide(n) {
+            slideActual += n;
+            if (slideActual >= totalSlides) slideActual = totalSlides - 1;
+            if (slideActual < 0) slideActual = 0;
+            mostrarSlide(slideActual);
+        }
+
+        // Navegación con teclado
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') cambiarSlide(1);
+            if (e.key === 'ArrowLeft') cambiarSlide(-1);
+        });
+
+        // Inicializar
+        mostrarSlide(0);
+    </script>
+</body>
+</html>

@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BERT Práctico: Variantes y Entrenamiento</title>
+    <style>
+:root {
+  --color-white: rgba(255, 255, 255, 1);
+  --color-black: rgba(0, 0, 0, 1);
+  --color-cream-50: rgba(252, 252, 249, 1);
+  --color-cream-100: rgba(255, 255, 253, 1);
+  --color-gray-200: rgba(245, 245, 245, 1);
+  --color-gray-300: rgba(167, 169, 169, 1);
+  --color-gray-400: rgba(119, 124, 124, 1);
+  --color-slate-500: rgba(98, 108, 113, 1);
+  --color-brown-600: rgba(94, 82, 64, 1);
+  --color-charcoal-700: rgba(31, 33, 33, 1);
+  --color-charcoal-800: rgba(38, 40, 40, 1);
+  --color-slate-900: rgba(19, 52, 59, 1);
+  --color-teal-300: rgba(50, 184, 198, 1);
+  --color-teal-400: rgba(45, 166, 178, 1);
+  --color-teal-500: rgba(33, 128, 141, 1);
+  --color-teal-600: rgba(29, 116, 128, 1);
+  --color-teal-700: rgba(26, 104, 115, 1);
+  --color-teal-800: rgba(41, 150, 161, 1);
+  --color-red-400: rgba(255, 84, 89, 1);
+  --color-red-500: rgba(192, 21, 47, 1);
+  --color-orange-400: rgba(230, 129, 97, 1);
+  --color-orange-500: rgba(168, 75, 47, 1);
+  --color-brown-600-rgb: 94, 82, 64;
+  --color-teal-500-rgb: 33, 128, 141;
+  --color-slate-900-rgb: 19, 52, 59;
+  --color-slate-500-rgb: 98, 108, 113;
+  --color-red-500-rgb: 192, 21, 47;
+  --color-red-400-rgb: 255, 84, 89;
+  --color-orange-500-rgb: 168, 75, 47;
+  --color-orange-400-rgb: 230, 129, 97;
+  --color-bg-1: rgba(59, 130, 246, 0.08);
+  --color-bg-2: rgba(245, 158, 11, 0.08);
+  --color-bg-3: rgba(34, 197, 94, 0.08);
+  --color-bg-4: rgba(239, 68, 68, 0.08);
+  --color-bg-5: rgba(147, 51, 234, 0.08);
+  --color-bg-6: rgba(249, 115, 22, 0.08);
+  --color-bg-7: rgba(236, 72, 153, 0.08);
+  --color-bg-8: rgba(6, 182, 212, 0.08);
+  --gradient-primary: linear-gradient(135deg, #00d4ff 0%, #5c2de5 100%);
+  --gradient-secondary: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-gray-400-rgb: 119, 124, 124;
+    --color-teal-300-rgb: 50, 184, 198;
+    --color-gray-300-rgb: 167, 169, 169;
+    --color-gray-200-rgb: 245, 245, 245;
+    --color-bg-1: rgba(29, 78, 216, 0.15);
+    --color-bg-2: rgba(180, 83, 9, 0.15);
+    --color-bg-3: rgba(21, 128, 61, 0.15);
+    --color-bg-4: rgba(185, 28, 28, 0.15);
+    --color-bg-5: rgba(107, 33, 168, 0.15);
+    --color-bg-6: rgba(194, 65, 12, 0.15);
+    --color-bg-7: rgba(190, 24, 93, 0.15);
+    --color-bg-8: rgba(8, 145, 178, 0.15);
+  }
+}
+
+@font-face {
+  font-family: 'FKGroteskNeue';
+  src: url('https://r2cdn.perplexity.ai/fonts/FKGroteskNeue.woff2') format('woff2');
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'FKGroteskNeue', 'Segoe UI', 'Inter', -apple-system, sans-serif;
+  background: #0a0e27;
+  color: #ffffff;
+}
+
+.presentation-container {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+}
+
+.progress-bar-container {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00d4ff 0%, #5c2de5 100%);
+  transition: width 0.3s ease;
+}
+
+.slides-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.slide {
+  display: none;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.slide.active {
+  display: block;
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.slide-content {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.slide-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 0.8rem;
+  line-height: 1.2;
+}
+
+.slide-subtitle {
+  font-size: 1.2rem;
+  color: #00f4ff;
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+}
+
+.cover-slide {
+  text-align: center;
+  padding: 3rem 2rem;
+}
+
+.cover-slide .slide-title {
+  font-size: 3.5rem;
+  background: linear-gradient(135deg, #00d4ff 0%, #5c2de5 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 1rem;
+}
+
+.cover-slide .slide-subtitle {
+  font-size: 1.5rem;
+  color: #e0e0e0;
+}
+
+.index-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.index-item {
+  background: rgba(0, 244, 255, 0.1);
+  padding: 1rem;
+  border-radius: 10px;
+  border-left: 4px solid #00f4ff;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.index-item:hover {
+  background: rgba(0, 244, 255, 0.2);
+  transform: translateX(5px);
+}
+
+.index-number {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #00f4ff;
+  min-width: 30px;
+}
+
+.info-box {
+  background: rgba(0, 244, 255, 0.1);
+  padding: 1.5rem;
+  border-radius: 10px;
+  border: 2px solid #00f4ff;
+  margin: 1.5rem 0;
+}
+
+.highlight-box {
+  background: rgba(92, 45, 229, 0.15);
+  padding: 1.5rem;
+  border-radius: 10px;
+  border-left: 4px solid #5c2de5;
+  margin: 1.5rem 0;
+}
+
+.warning-box {
+  background: rgba(255, 107, 53, 0.15);
+  padding: 1.5rem;
+  border-radius: 10px;
+  border-left: 4px solid #ff6b35;
+  margin: 1.5rem 0;
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.9rem;
+}
+
+.comparison-table th,
+.comparison-table td {
+  padding: 0.8rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.comparison-table th {
+  background: rgba(0, 0, 0, 0.4);
+  font-weight: 700;
+  color: #00f4ff;
+}
+
+.comparison-table tr:hover {
+  background: rgba(0, 244, 255, 0.05);
+}
+
+.feature-list {
+  list-style: none;
+  margin-top: 1rem;
+}
+
+.feature-list li {
+  padding: 0.8rem;
+  margin-bottom: 0.8rem;
+  background: rgba(0, 244, 255, 0.08);
+  border-radius: 8px;
+  border-left: 3px solid #00f4ff;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+}
+
+.feature-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.flow-diagram {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  flex-wrap: wrap;
+}
+
+.flow-box {
+  background: rgba(0, 0, 0, 0.4);
+  padding: 1rem;
+  border-radius: 10px;
+  border: 2px solid #00f4ff;
+  text-align: center;
+  min-width: 120px;
+  flex: 1;
+  max-width: 200px;
+}
+
+.flow-arrow {
+  font-size: 1.5rem;
+  color: #00f4ff;
+}
+
+.resource-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.resource-card {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1.2rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nav-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: rgba(10, 14, 39, 0.95);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.nav-buttons {
+  display: flex;
+  gap: 1rem;
+}
+
+.btn {
+  padding: 0.7rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'FKGroteskNeue', sans-serif;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #00d4ff 0%, #0088ff 100%);
+  color: #ffffff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 212, 255, 0.4);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.progress-text {
+  font-size: 1rem;
+  color: #e0e0e0;
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .slides-wrapper {
+    padding: 1rem;
+  }
+  
+  .slide-content {
+    padding: 1.5rem;
+  }
+  
+  .slide-title {
+    font-size: 1.8rem;
+  }
+  
+  .cover-slide .slide-title {
+    font-size: 2.5rem;
+  }
+  
+  .nav-controls {
+    padding: 0.8rem 1rem;
+  }
+  
+  .comparison-table {
+    font-size: 0.75rem;
+  }
+  
+  .comparison-table th,
+  .comparison-table td {
+    padding: 0.5rem;
+  }
+}
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        <div class="progress-bar-container">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        
+        <div class="slides-wrapper">
+            <!-- Slide 1: Portada -->
+            <div class="slide active" id="slide-1">
+                <div class="slide-content cover-slide">
+                    <h1 class="slide-title">BERT Práctico</h1>
+                    <p class="slide-subtitle">Variantes y Entrenamiento Real</p>
+                    <p style="font-size: 1.1rem; color: #a0a0a0; margin-top: 2rem;">De la teoría a la práctica en NLP moderno</p>
+                </div>
+            </div>
+
+            <!-- Slide 2: Índice -->
+            <div class="slide" id="slide-2">
+                <div class="slide-content">
+                    <h2 class="slide-title">📋 Contenido</h2>
+                    <div class="index-grid">
+                        <div class="index-item" onclick="goToSlide(3)"><span class="index-number">3</span>¿Por qué BERT?</div>
+                        <div class="index-item" onclick="goToSlide(4)"><span class="index-number">4</span>Variantes Modernas</div>
+                        <div class="index-item" onclick="goToSlide(5)"><span class="index-number">5</span>BETO y Español</div>
+                        <div class="index-item" onclick="goToSlide(6)"><span class="index-number">6</span>Usos Reales 2024-2025</div>
+                        <div class="index-item" onclick="goToSlide(7)"><span class="index-number">7</span>¿Entrenar o Reutilizar?</div>
+                        <div class="index-item" onclick="goToSlide(8)"><span class="index-number">8</span>Entrenar desde Cero</div>
+                        <div class="index-item" onclick="goToSlide(9)"><span class="index-number">9</span>Pre-entrenamiento</div>
+                        <div class="index-item" onclick="goToSlide(10)"><span class="index-number">10</span>Fine-tuning</div>
+                        <div class="index-item" onclick="goToSlide(11)"><span class="index-number">11</span>Re-training Práctico</div>
+                        <div class="index-item" onclick="goToSlide(12)"><span class="index-number">12</span>Conclusión y Herramientas</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 3: Contexto Rápido -->
+            <div class="slide" id="slide-3">
+                <div class="slide-content">
+                    <h2 class="slide-title">🚀 ¿Por qué BERT? (Contexto Rápido)</h2>
+                    <p class="slide-subtitle">La revolución de 2018 que sigue vigente en 2025</p>
+                    
+                    <div class="info-box">
+                        <p style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.8rem;">💡 La Gran Innovación:</p>
+                        <p style="font-size: 1.1rem;">BERT lee texto en <strong>ambas direcciones simultáneamente</strong> (bidireccional), no palabra por palabra como modelos anteriores.</p>
+                    </div>
+
+                    <ul class="feature-list">
+                        <li>
+                            <span class="feature-icon">✅</span>
+                            <div><strong>Transfer Learning:</strong> Pre-entrenado en 3,300M palabras, listo para adaptar a tu tarea</div>
+                        </li>
+                        <li>
+                            <span class="feature-icon">✅</span>
+                            <div><strong>Fine-tuning rápido:</strong> Adapta BERT a tu dominio en minutos/horas con pocos datos</div>
+                        </li>
+                        <li>
+                            <span class="feature-icon">✅</span>
+                            <div><strong>Versatilidad:</strong> Clasificación, NER, Q&amp;A, similitud de textos, embeddings</div>
+                        </li>
+                        <li>
+                            <span class="feature-icon">✅</span>
+                            <div><strong>Económico:</strong> Fine-tuning cuesta $10-100 vs $7,000+ entrenar desde cero</div>
+                        </li>
+                    </ul>
+
+                    <div class="highlight-box">
+                        <p style="font-size: 1.1rem; text-align: center;"><strong>🎯 Resultado:</strong> BERT democratizó el NLP permitiendo a cualquiera usar modelos de última generación sin entrenar desde cero</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 4: Tabla Comparativa de Variantes -->
+            <div class="slide" id="slide-4">
+                <div class="slide-content">
+                    <h2 class="slide-title">⚖️ Variantes Modernas: Tabla Comparativa</h2>
+                    <p class="slide-subtitle">Comparación práctica para elegir el modelo correcto</p>
+                    
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Modelo</th>
+                                <th>Parámetros</th>
+                                <th>Velocidad</th>
+                                <th>Precisión</th>
+                                <th>Cuándo Usar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>BERT Base</strong></td>
+                                <td>110M</td>
+                                <td>⭐⭐⭐</td>
+                                <td>⭐⭐⭐⭐</td>
+                                <td>Baseline sólido, uso general</td>
+                            </tr>
+                            <tr style="background: rgba(0, 244, 255, 0.1);">
+                                <td><strong>RoBERTa</strong></td>
+                                <td>125M</td>
+                                <td>⭐⭐⭐</td>
+                                <td style="color: #00f4ff; font-weight: 700;">⭐⭐⭐⭐⭐</td>
+                                <td>Máxima precisión, competencias</td>
+                            </tr>
+                            <tr>
+                                <td><strong>DistilBERT</strong></td>
+                                <td style="color: #00f4ff;">66M (-40%)</td>
+                                <td style="color: #00f4ff; font-weight: 700;">⭐⭐⭐⭐⭐</td>
+                                <td>⭐⭐⭐</td>
+                                <td>Producción, móviles, velocidad</td>
+                            </tr>
+                            <tr>
+                                <td><strong>BETO</strong></td>
+                                <td>110M</td>
+                                <td>⭐⭐⭐</td>
+                                <td>⭐⭐⭐⭐</td>
+                                <td style="color: #ff6b35; font-weight: 700;">Español específico</td>
+                            </tr>
+                            <tr>
+                                <td><strong>ALBERT</strong></td>
+                                <td style="color: #00f4ff;">12M (-89%)</td>
+                                <td>⭐⭐⭐⭐</td>
+                                <td>⭐⭐⭐</td>
+                                <td>Edge, memoria ultra limitada</td>
+                            </tr>
+                            <tr style="background: rgba(92, 45, 229, 0.1);">
+                                <td><strong>LLaMA 3</strong></td>
+                                <td style="color: #ff6b35;">8B-70B</td>
+                                <td>⭐⭐</td>
+                                <td style="color: #00f4ff; font-weight: 700;">⭐⭐⭐⭐⭐</td>
+                                <td>Generación, chat, razonamiento</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="info-box">
+                        <p style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.8rem;">💡 Guía rápida de selección:</p>
+                        <p><strong>🥇 Precisión máxima:</strong> RoBERTa | <strong>⚡ Velocidad:</strong> DistilBERT | <strong>🇪🇸 Español:</strong> BETO | <strong>💬 Generación:</strong> LLaMA</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 5: BETO y Español -->
+            <div class="slide" id="slide-5">
+                <div class="slide-content">
+                    <h2 class="slide-title">🇪🇸 BETO y Modelos para Español</h2>
+                    <p class="slide-subtitle">Opciones cuando trabajas con textos en castellano</p>
+                    
+                    <div class="info-box">
+                        <p style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.8rem;">🎯 BETO (BERT en Español):</p>
+                        <p style="font-size: 1rem;">Entrenado específicamente en textos en español (Wikipedia ES, libros, noticias). Mejor que mBERT para tareas en castellano.</p>
+                    </div>
+
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Modelo</th>
+                                <th>Idiomas</th>
+                                <th>Rendimiento ES</th>
+                                <th>Uso Recomendado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="background: rgba(0, 244, 255, 0.1);">
+                                <td><strong>BETO</strong></td>
+                                <td>Solo Español</td>
+                                <td style="color: #00f4ff; font-weight: 700;">⭐⭐⭐⭐⭐</td>
+                                <td>Mejor opción para español puro</td>
+                            </tr>
+                            <tr>
+                                <td><strong>mBERT</strong></td>
+                                <td>104 idiomas</td>
+                                <td>⭐⭐⭐</td>
+                                <td>Multilingüe, cross-lingual</td>
+                            </tr>
+                            <tr>
+                                <td><strong>XLM-RoBERTa</strong></td>
+                                <td>100 idiomas</td>
+                                <td>⭐⭐⭐⭐</td>
+                                <td>Mejor multilingüe, más grande</td>
+                            </tr>
+                            <tr>
+                                <td><strong>MarIA</strong></td>
+                                <td>Español (variantes)</td>
+                                <td>⭐⭐⭐⭐</td>
+                                <td>Español latinoamericano</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <ul class="feature-list">
+                        <li>
+                            <span class="feature-icon">📊</span>
+                            <div><strong>BETO:</strong> Entrenado en 3GB de texto español (Wikipedia, libros, subtítulos)</div>
+                        </li>
+                        <li>
+                            <span class="feature-icon">🌍</span>
+                            <div><strong>mBERT:</strong> Útil cuando necesitas procesar varios idiomas en la misma aplicación</div>
+                        </li>
+                        <li>
+                            <span class="feature-icon">🚀</span>
+                            <div><strong>XLM-RoBERTa:</strong> La mejor opción multilingüe, especialmente para tareas complejas</div>
+                        </li>
+                    </ul>
+
+                    <div class="highlight-box">
+                        <p style="font-size: 1.1rem; text-align: center;"><strong>💡 Recomendación:</strong> Si solo trabajas en español, usa BETO. Si necesitas multilingüe, XLM-RoBERTa.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 6: Usos Reales 2024-2025 -->
+            <div class="slide" id="slide-6">
+                <div class="slide-content">
+                    <h2 class="slide-title">🌐 Usos Reales 2024-2025</h2>
+                    <p class="slide-subtitle">BERT en producción HOY en empresas reales</p>
+                    
+                    <ul class="feature-list">
+                        <li>
+                            <span class="feature-icon">🔍</span>
+                            <div>
+                                <strong>Google Search:</strong> 1 de cada 10 búsquedas usa BERT para entender la intención del usuario
+                            </div>
+                        </li>
+                        <li>
+                            <span class="feature-icon">💬</span>
+                            <div>
+                                <strong>Chatbots Empresariales:</strong> IBM Watson, Zendesk, Intercom - clasificación de intenciones y routing
+                            </div>
+                        </li>
+                        <li>
+                            <span class="feature-icon">📧</span>
+                            <div>
+                                <strong>Gmail Smart Reply:</strong> Sugerencias de respuesta basadas en contexto del email
+                            </div>
+                        </li>
+                        <li>
+                            <span class="feature-icon">🏥</span>
+                            <div>
+                                <strong>Salud:</strong> BioBERT, ClinicalBERT extraen información de historias clínicas (FDA aprobado)
+                            </div>
+                        </li>
+                        <li>
+                            <span class="feature-icon">💼</span>
+                            <div>
+                                <strong>Análisis de Sentimientos:</strong> Empresas analizan reviews, redes sociales, feedback (Twitter, Reddit, Amazon)
+                            </div>
+                        </li>
+                        <li>
+                            <span class="feature-icon">⚖️</span>
+                            <div>
+                                <strong>Legal:</strong> LegalBERT - análisis de contratos, búsqueda de precedentes, clasificación documental
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="info-box">
+                        <p style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.8rem;">📊 Estadísticas 2025:</p>
+                        <p><strong>🌍 Hugging Face:</strong> +20,000 modelos BERT | <strong>📥 Descargas:</strong> 15M mensuales | <strong>🏢 Fortune 500:</strong> 65%+ usan BERT en producción</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 7: Dilema -->
+            <div class="slide" id="slide-7">
+                <div class="slide-content">
+                    <h2 class="slide-title">🤔 Dilema: ¿Entrenar o Reutilizar?</h2>
+                    <p class="slide-subtitle">La decisión más importante antes de empezar un proyecto NLP</p>
+                    
+                    <div class="flow-diagram">
+                        <div class="flow-box" style="background: rgba(255, 107, 53, 0.2); border-color: #ff6b35;">
+                            <strong>Entrenar desde Cero</strong><br>
+                            <small>$7,000+ | 4-7 días | 100M+ datos</small>
+                        </div>
+                        <span class="flow-arrow">VS</span>
+                        <div class="flow-box" style="background: rgba(0, 244, 255, 0.2); border-color: #00f4ff;">
+                            <strong>Transfer Learning</strong><br>
+                            <small>$10-100 | Minutos/horas | 1K-100K datos</small>
+                        </div>
+                    </div>
+
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Aspecto</th>
+                                <th>Entrenar desde Cero</th>
+                                <th>Fine-tuning (Transfer Learning)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Costo</strong></td>
+                                <td style="color: #ff6b35;">$7,000-50,000 (TPUs/GPUs)</td>
+                                <td style="color: #00f4ff; font-weight: 700;">$10-500 (GPU por horas)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tiempo</strong></td>
+                                <td style="color: #ff6b35;">4-7 días continuos</td>
+                                <td style="color: #00f4ff; font-weight: 700;">Minutos a horas</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Datos necesarios</strong></td>
+                                <td style="color: #ff6b35;">100M+ palabras (no etiquetadas)</td>
+                                <td style="color: #00f4ff; font-weight: 700;">1,000-100,000 ejemplos (etiquetados)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Expertise requerido</strong></td>
+                                <td style="color: #ff6b35;">Alto (ingeniería ML avanzada)</td>
+                                <td style="color: #00f4ff; font-weight: 700;">Medio (conocimientos básicos)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Resultados</strong></td>
+                                <td>Modelo totalmente personalizado</td>
+                                <td>97-99% tan bueno, mucho más rápido</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="warning-box">
+                        <p style="font-size: 1.2rem; font-weight: 700; text-align: center;">⚠️ Realidad: Menos del 1% de los proyectos NLP entrenan BERT desde cero. El 99% usa transfer learning.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 8: Entrenar desde Cero -->
+            <div class="slide" id="slide-8">
+                <div class="slide-content">
+                    <h2 class="slide-title">💰 Entrenar BERT desde Cero (La Realidad)</h2>
+                    <p class="slide-subtitle">Por qué es tan complejo y costoso</p>
+                    
+                    <div class="warning-box">
+                        <p style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.8rem;">💸 Recursos Necesarios (BERT Base):</p>
+                        <ul style="list-style: none; padding-left: 0;">
+                            <li style="margin-bottom: 0.5rem;">🖥️ <strong>Hardware:</strong> 64 TPUs v3 o 256 GPUs V100</li>
+                            <li style="margin-bottom: 0.5rem;">⏱️ <strong>Tiempo:</strong> 4 días continuos (96 horas)</li>
+                            <li style="margin-bottom: 0.5rem;">💰 <strong>Costo estimado:</strong> $7,000-12,000 USD</li>
+                            <li style="margin-bottom: 0.5rem;">📚 <strong>Datos:</strong> 3,300M palabras (16GB de texto limpio)</li>
+                        </ul>
+                    </div>
+
+                    <ul class="feature-list">
+                        <li>
+                            <span class="feature-icon">⚙️</span>
+                            <div><strong>Complejidad técnica:</strong> Necesitas expertise en paralelización distribuida, gradient checkpointing, mixed precision</div>
+                        </li>
+                        <li>
+                            <span class="feature-icon">📊</span>
+                            <div><strong>Preparación de datos:</strong> Limpieza, tokenización, creación de vocabulario, balanceo de corpus</div>
+                        </li>
+                        <li>
+                            <span class="feature-icon">🔧</span>
+                            <div><strong>Optimización:</strong> Learning rate scheduling, warmup, gradient clipping, regularización</div>
+                        </li>
+                        <li>
+                            <span class="feature-icon">🐛</span>
+                            <div><strong>Debugging:</strong> Si algo falla a las 48 horas, perdiste $3,500 y tienes que reiniciar</div>
+                        </li>
+                    </ul>
+
+                    <div class="info-box">
+                        <p style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.8rem;">🎯 Cuándo SÍ tiene sentido entrenar desde cero:</p>
+                        <p>✅ Tienes un dominio MUY específico (jerga técnica, idioma raro)<br>
+                        ✅ Tienes presupuesto de investigación ($50K+)<br>
+                        ✅ Necesitas control total sobre arquitectura y datos<br>
+                        ✅ Trabajas en una gran empresa tech (Google, Meta, OpenAI)</p>
+                    </div>
+
+                    <div class="highlight-box">
+                        <p style="font-size: 1.1rem; text-align: center;"><strong>💡 Para el 99% de casos:</strong> Transfer learning es la opción correcta, más rápida, económica y efectiva.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 9: Pre-entrenamiento -->
+            <div class="slide" id="slide-9">
+                <div class="slide-content">
+                    <h2 class="slide-title">📚 Pre-entrenamiento (Qué Ocurre)</h2>
+                    <p class="slide-subtitle">Cómo BERT aprende lenguaje sin supervisión</p>
+                    
+                    <div class="info-box">
+                        <p style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.8rem;">🎯 Dos tareas auto-supervisadas:</p>
+                    </div>
+
+                    <div class="highlight-box" style="margin-bottom: 1rem;">
+                        <p style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.8rem;">1️⃣ Masked Language Model (MLM)</p>
+                        <p style="margin-bottom: 0.8rem;">Se enmascara el 15% de las palabras aleatoriamente, BERT debe predecirlas usando contexto bidireccional.</p>
+                        <div style="background: rgba(0, 0, 0, 0.3); padding: 1rem; border-radius: 8px; font-family: monospace;">
+                            <strong>Entrada:</strong> El gato [MASK] en el [MASK]<br>
+                            <strong>BERT predice:</strong> "está" y "árbol"<br>
+                            <strong>Aprende:</strong> Gramática, sintaxis, semántica contextual
+                        </div>
+                    </div>
+
+                    <div class="highlight-box">
+                        <p style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.8rem;">2️⃣ Next Sentence Prediction (NSP)</p>
+                        <p style="margin-bottom: 0.8rem;">Predecir si la Frase B sigue lógicamente a la Frase A (50% positivo, 50% aleatorio negativo).</p>
+                        <div style="background: rgba(0, 0, 0, 0.3); padding: 1rem; border-radius: 8px; font-family: monospace;">
+                            <strong>Positivo:</strong><br>
+                            A: "El gato tiene hambre"<br>
+                            B: "Voy a darle comida" → ✅<br><br>
+                            <strong>Negativo:</strong><br>
+                            A: "El gato tiene hambre"<br>
+                            B: "La luna es redonda" → ❌
+                        </div>
+                    </div>
+
+                    <ul class="feature-list" style="margin-top: 1.5rem;">
+                        <li>
+                            <span class="feature-icon">🧠</span>
+                            <div><strong>Resultado:</strong> BERT aprende representaciones contextuales profundas del lenguaje</div>
+                        </li>
+                        <li>
+                            <span class="feature-icon">🎓</span>
+                            <div><strong>Sin etiquetas:</strong> Todo es auto-supervisado (no necesitas datos etiquetados manualmente)</div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Slide 10: Fine-tuning -->
+            <div class="slide" id="slide-10">
+                <div class="slide-content">
+                    <h2 class="slide-title">🎯 Fine-tuning (La Forma Normal)</h2>
+                    <p class="slide-subtitle">Cómo adaptar BERT a tu tarea específica</p>
+                    
+                    <div class="flow-diagram">
+                        <div class="flow-box" style="background: rgba(92, 45, 229, 0.2); border-color: #5c2de5;">
+                            <strong>1. Cargar BERT</strong><br>
+                            <small>Pre-entrenado</small>
+                        </div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-box" style="background: rgba(0, 244, 255, 0.2); border-color: #00f4ff;">
+                            <strong>2. Añadir capa</strong><br>
+                            <small>Clasificador</small>
+                        </div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-box" style="background: rgba(0, 200, 100, 0.2); border-color: #00c864;">
+                            <strong>3. Entrenar</strong><br>
+                            <small>Con tus datos</small>
+                        </div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-box" style="background: rgba(255, 107, 53, 0.2); border-color: #ff6b35;">
+                            <strong>4. Listo</strong><br>
+                            <small>Modelo experto</small>
+                        </div>
+                    </div>
+
+                    <div class="info-box">
+                        <p style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.8rem;">📊 Requisitos de Fine-tuning:</p>
+                        <ul style="list-style: none; padding-left: 0;">
+                            <li style="margin-bottom: 0.5rem;">📚 <strong>Datos:</strong> 1,000-10,000 ejemplos etiquetados (mínimo 500)</li>
+                            <li style="margin-bottom: 0.5rem;">🖥️ <strong>Hardware:</strong> GPU con 8GB+ (Google Colab gratis funciona)</li>
+                            <li style="margin-bottom: 0.5rem;">⏱️ <strong>Tiempo:</strong> 10 minutos a 2 horas</li>
+                            <li style="margin-bottom: 0.5rem;">💰 <strong>Costo:</strong> $5-50 en GPU cloud</li>
+                            <li style="margin-bottom: 0.5rem;">🎓 <strong>Skill:</strong> Conocimientos básicos de Python + Transformers</li>
+                        </ul>
+                    </div>
+
+                    <ul class="feature-list">
+                        <li>
+                            <span class="feature-icon">🔧</span>
+                            <div><strong>Hiperparámetros típicos:</strong> Learning rate 2e-5, batch size 16-32, 3-5 épocas</div>
+                        </li>
+                        <li>
+                            <span class="feature-icon">⚠️</span>
+                            <div><strong>Overfitting:</strong> No entrenes más de 5 épocas, usa validación para parar early</div>
+                        </li>
+                        <li>
+                            <span class="feature-icon">📈</span>
+                            <div><strong>Resultados:</strong> Típicamente 85-95% accuracy en la mayoría de tareas de clasificación</div>
+                        </li>
+                    </ul>
+
+                    <div class="highlight-box">
+                        <p style="font-size: 1.1rem; text-align: center;"><strong>💡 Fine-tuning es LA forma estándar de usar BERT en 2025.</strong> Rápido, económico, efectivo.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 11: Re-training con Menos Recursos -->
+            <div class="slide" id="slide-11">
+                <div class="slide-content">
+                    <h2 class="slide-title">💪 Re-training con Menos Recursos (La Realidad)</h2>
+                    <p class="slide-subtitle">Técnicas prácticas cuando no tienes GPUs masivas</p>
+                    
+                    <div class="info-box">
+                        <p style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.8rem;">🎯 La Verdad del Entrenamiento Real:</p>
+                        <p>En la industria, casi NADIE entrena desde cero. En su lugar, se usa <strong>continued pre-training</strong> o <strong>domain adaptation</strong> con recursos limitados.</p>
+                    </div>
+
+                    <ul class="feature-list">
+                        <li>
+                            <span class="feature-icon">🔄</span>
+                            <div>
+                                <strong>Continued Pre-training:</strong> Cargar BERT pre-entrenado y seguir entrenando con MLM en datos de tu dominio (medicina, legal, finanzas)
+                            </div>
+                        </li>
+                        <li>
+                            <span class="feature-icon">🎯</span>
+                            <div>
+                                <strong>Domain Adaptation:</strong> Re-entrenar solo las últimas capas de BERT con datos específicos de tu industria
+                            </div>
+                        </li>
+                        <li>
+                            <span class="feature-icon">💾</span>
+                            <div>
+                                <strong>LoRA (Low-Rank Adaptation):</strong> Entrenar matrices pequeñas en lugar de todo el modelo (usa 90% menos memoria)
+                            </div>
+                        </li>
+                        <li>
+                            <span class="feature-icon">⚡</span>
+                            <div>
+                                <strong>Gradient Accumulation:</strong> Simular batch sizes grandes acumulando gradientes en múltiples pasos
+                            </div>
+                        </li>
+                        <li>
+                            <span class="feature-icon">🔧</span>
+                            <div>
+                                <strong>Mixed Precision (FP16):</strong> Entrenar en float16 en lugar de float32 (50% menos memoria, 2-3x más rápido)
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="highlight-box">
+                        <p style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.8rem;">📊 Ejemplo Práctico: BioBERT</p>
+                        <p>No entrenaron desde cero. Tomaron BERT y lo re-entrenaron con papers médicos (PubMed) durante 1-2 días en 8 GPUs. Resultado: estado del arte en tareas médicas.</p>
+                    </div>
+
+                    <div class="warning-box">
+                        <p style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.8rem;">💡 Recomendación para Startups/Investigadores:</p>
+                        <p><strong>1.</strong> Empieza con BERT/RoBERTa pre-entrenado<br>
+                        <strong>2.</strong> Si tienes datos de dominio (1M+ textos), haz continued pre-training (1-2 días, 1-4 GPUs)<br>
+                        <strong>3.</strong> Luego fine-tuning en tu tarea específica<br>
+                        <strong>4.</strong> Usa técnicas como LoRA, mixed precision para reducir costos</p>
+                    </div>
+
+                    <div class="info-box">
+                        <p style="text-align: center; font-size: 1.1rem;"><strong>⚡ Resultado:</strong> Obtienes un modelo casi tan bueno como entrenar desde cero, pero en 5-10% del costo y tiempo.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 12: Conclusión + Herramientas -->
+            <div class="slide" id="slide-12">
+                <div class="slide-content">
+                    <h2 class="slide-title">🎓 Conclusión + Herramientas Prácticas</h2>
+                    <p class="slide-subtitle">Resumen y recursos para empezar HOY</p>
+                    
+                    <div class="info-box">
+                        <p style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.8rem;">✅ Lo que Aprendimos:</p>
+                        <ul style="list-style: none; padding-left: 0;">
+                            <li style="margin-bottom: 0.5rem;">✅ BERT sigue siendo relevante en 2025 para tareas de comprensión</li>
+                            <li style="margin-bottom: 0.5rem;">✅ Entrenar desde cero es caro ($7K+, 4 días) - casi nadie lo hace</li>
+                            <li style="margin-bottom: 0.5rem;">✅ Fine-tuning es la forma normal: rápido, barato, efectivo</li>
+                            <li style="margin-bottom: 0.5rem;">✅ Re-training con continued pre-training es el middle ground práctico</li>
+                            <li style="margin-bottom: 0.5rem;">✅ Elige la variante según tu prioridad: precisión, velocidad, idioma</li>
+                        </ul>
+                    </div>
+
+                    <div class="resource-grid">
+                        <div class="resource-card">
+                            <p style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.5rem;">🤗 Hugging Face</p>
+                            <p style="font-size: 0.9rem; color: #a0a0a0;">hub.co - 20,000+ modelos pre-entrenados listos para usar</p>
+                        </div>
+                        <div class="resource-card">
+                            <p style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.5rem;">📚 Transformers Lib</p>
+                            <p style="font-size: 0.9rem; color: #a0a0a0;">pip install transformers - API simple para cargar y usar BERT</p>
+                        </div>
+                        <div class="resource-card">
+                            <p style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.5rem;">💻 Google Colab</p>
+                            <p style="font-size: 0.9rem; color: #a0a0a0;">GPU gratis para experimentar con fine-tuning</p>
+                        </div>
+                        <div class="resource-card">
+                            <p style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.5rem;">🇪🇸 BETO</p>
+                            <p style="font-size: 0.9rem; color: #a0a0a0;">dccuchile/bert-base-spanish-wwm-cased en HF</p>
+                        </div>
+                    </ul>
+
+                    <div class="highlight-box" style="margin-top: 1.5rem;">
+                        <p style="font-size: 1.3rem; font-weight: 700; text-align: center; margin-bottom: 0.8rem;">🚀 Próximos Pasos</p>
+                        <p style="text-align: center; font-size: 1.1rem;">
+                            <strong>1.</strong> Elige tu modelo (BERT, RoBERTa, BETO)<br>
+                            <strong>2.</strong> Carga con Hugging Face pipelines<br>
+                            <strong>3.</strong> Experimenta en Google Colab<br>
+                            <strong>4.</strong> Fine-tune en tus datos<br>
+                            <strong>5.</strong> Deploy en producción
+                        </p>
+                    </div>
+
+                    <div style="background: rgba(0, 244, 255, 0.2); padding: 2rem; border-radius: 12px; margin-top: 1.5rem; text-align: center; border: 2px solid #00f4ff;">
+                        <p style="font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem;">¡Gracias! 🎉</p>
+                        <p style="font-size: 1.2rem; color: #e0e0e0;">¿Preguntas?</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Controls -->
+        <div class="nav-controls">
+            <button class="btn btn-secondary" id="prevBtn" onclick="changeSlide(-1)">← Anterior</button>
+            <div class="progress-text" id="progress">Slide 1 / 12</div>
+            <button class="btn btn-primary" id="nextBtn" onclick="changeSlide(1)">Siguiente →</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 12;
+
+        function showSlide(n) {
+            if (n > totalSlides) currentSlide = totalSlides;
+            if (n < 1) currentSlide = 1;
+            
+            const slides = document.querySelectorAll('.slide');
+            slides.forEach(slide => slide.classList.remove('active'));
+            
+            const currentSlideElement = document.getElementById(`slide-${currentSlide}`);
+            if (currentSlideElement) {
+                currentSlideElement.classList.add('active');
+            }
+            
+            document.getElementById('progress').textContent = `Slide ${currentSlide} / ${totalSlides}`;
+            
+            const progressFill = document.getElementById('progressFill');
+            const progressPercent = (currentSlide / totalSlides) * 100;
+            progressFill.style.width = `${progressPercent}%`;
+            
+            document.getElementById('prevBtn').disabled = currentSlide === 1;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides;
+            
+            const slidesWrapper = document.querySelector('.slides-wrapper');
+            slidesWrapper.scrollTop = 0;
+        }
+
+        function changeSlide(direction) {
+            currentSlide += direction;
+            showSlide(currentSlide);
+        }
+
+        function goToSlide(slideNumber) {
+            currentSlide = slideNumber;
+            showSlide(currentSlide);
+        }
+
+        showSlide(currentSlide);
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' && currentSlide > 1) {
+                changeSlide(-1);
+            } else if (e.key === 'ArrowRight' && currentSlide < totalSlides) {
+                changeSlide(1);
+            }
+        });
+    </script>
+</body>
+</html>
